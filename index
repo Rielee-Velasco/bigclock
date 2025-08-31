@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>GMT+8 Clock</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #000;
+      color: orange;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: ui-monospace, monospace;
+    }
+    #clock {
+      font-size: clamp(8rem, 20vw, 30rem);
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      text-align: center;
+    }
+    #sub {
+      position: absolute;
+      bottom: 1rem;
+      width: 100%;
+      text-align: center;
+      font-size: 1.2rem;
+      opacity: 0.6;
+      font-family: sans-serif;
+    }
+    #hint {
+      position: absolute;
+      bottom: 2rem;
+      width: 100%;
+      text-align: center;
+      font-size: 1rem;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+  <div id="clock">00:00</div>
+  <div id="sub">GMT+8 • 24-hour</div>
+  <div id="hint">Click or tap to go fullscreen & keep screen awake</div>
+
+  <script>
+    const clock = document.getElementById("clock");
+    const hint = document.getElementById("hint");
+    let wakeLock = null;
+
+    function pad(n){ return n < 10 ? "0" + n : n }
+
+    function updateClock() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const tz = new Date(utc + (8 * 3600000)); // GMT+8
+      const h = pad(tz.getHours());
+      const m = pad(tz.getMinutes());
+      clock.textContent = `${h}:${m}`;
+    }
+
+    updateClock();
+    setInterval(updateClock, 30000); // update every 30s
+
+    async function requestWakeLock() {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", () => { wakeLock = null; });
+        }
+      } catch (err) {
+        console.warn("Wake Lock not available:", err);
+      }
+    }
+
+    async function goFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (err) {
+        console.warn("Fullscreen request failed:", err);
+      }
+    }
+
+    async function activate() {
+      hint.style.display = "none";
+      goFullscreen();
+      requestWakeLock();
+    }
+
+    document.addEventListener("click", activate, { once: true });
+    document.addEventListener("keydown", activate, { once: true });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && !wakeLock) {
+        requestWakeLock();
+      }
+    });
+  </script>
+</body>
+</html>
